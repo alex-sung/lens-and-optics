@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from "react";
@@ -6,6 +7,19 @@ const GOOGLE_REVIEW_URL =
   "https://search.google.com/local/writereview?placeid=ChIJsz83nLs5EzkRaaG9eBe6fuQ";
 
 const languages = ["English", "Hindi", "Hinglish"] as const;
+
+const examples = [
+  "good staff",
+  "good service",
+  "nice experience",
+  "frames achhe",
+  "friendly behaviour",
+  "good collection",
+  "stylish frames",
+  "good quality",
+  "helpful guidance",
+  "value for money",
+];
 
 export default function ReviewAssistant() {
   const [experience, setExperience] = useState("");
@@ -18,6 +32,30 @@ export default function ReviewAssistant() {
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState<number | null>(null);
   const [error, setError] = useState("");
+
+  function addExample(example: string) {
+    const currentParts = experience
+      .split(",")
+      .map((part) => part.trim().toLowerCase());
+
+    if (currentParts.includes(example.toLowerCase())) {
+      return;
+    }
+
+    const cleanExperience = experience.trim().replace(/,\s*$/, "");
+
+    const updatedExperience = cleanExperience
+      ? `${cleanExperience}, ${example}`
+      : example;
+
+    if (updatedExperience.length > 1200) {
+      setError("Input 1200 characters se zyada nahi ho sakta.");
+      return;
+    }
+
+    setExperience(updatedExperience);
+    setError("");
+  }
 
   async function generateReviews() {
     setError("");
@@ -61,6 +99,10 @@ export default function ReviewAssistant() {
           ? data.suggestions
           : []
       );
+
+      if (!Array.isArray(data.reviews) || data.reviews.length === 0) {
+        setError("Reviews nahi mile. Please dobara try karo.");
+      }
     } catch (err) {
       setError(
         err instanceof Error
@@ -72,10 +114,7 @@ export default function ReviewAssistant() {
     }
   }
 
-  async function copyReview(
-    review: string,
-    index: number
-  ) {
+  async function copyReview(review: string, index: number) {
     try {
       await navigator.clipboard.writeText(review);
 
@@ -94,18 +133,13 @@ export default function ReviewAssistant() {
   return (
     <main className="page">
       <section className="card">
-
-        <div className="brandMark">
-          L&O
-        </div>
+        <div className="brandMark">L&O</div>
 
         <p className="eyebrow">
           Lens & Optics Gallery
         </p>
 
-        <h1>
-          Apna experience batao.
-        </h1>
+        <h1>Apna experience batao.</h1>
 
         <p className="subtitle">
           Long paragraph likhne ki zarurat nahi.
@@ -117,17 +151,43 @@ export default function ReviewAssistant() {
           <strong>Example:</strong>
 
           <div className="examples">
-            <span>good staff</span>
-            <span>good service</span>
-            <span>nice experience</span>
-            <span>frames achhe</span>
+            {examples.map((example) => {
+              const isSelected = experience
+                .split(",")
+                .some(
+                  (part) =>
+                    part.trim().toLowerCase() ===
+                    example.toLowerCase()
+                );
+
+              return (
+                <button
+                  key={example}
+                  type="button"
+                  className="exampleChip"
+                  aria-pressed={isSelected}
+                  onClick={() => addExample(example)}
+                  disabled={loading}
+                  style={{
+                    border: "1px solid #dce1e9",
+                    borderRadius: "22px",
+                    padding: "7px 12px",
+                    background: isSelected ? "#111827" : "#ffffff",
+                    color: isSelected ? "#ffffff" : "#26364d",
+                    fontSize: "12px",
+                    cursor: loading ? "not-allowed" : "pointer",
+                    opacity: loading ? 0.6 : 1,
+                  }}
+                >
+                  {example}
+                  {isSelected ? " ✓" : ""}
+                </button>
+              );
+            })}
           </div>
         </div>
 
-        <label
-          className="label"
-          htmlFor="language"
-        >
+        <label className="label" htmlFor="language">
           Review language
         </label>
 
@@ -141,30 +201,25 @@ export default function ReviewAssistant() {
                   ? "language active"
                   : "language"
               }
-              onClick={() =>
-                setLanguage(item)
-              }
+              onClick={() => setLanguage(item)}
+              disabled={loading}
             >
               {item}
             </button>
           ))}
         </div>
 
-        <label
-          className="label"
-          htmlFor="experience"
-        >
+        <label className="label" htmlFor="experience">
           Your experience
         </label>
 
         <textarea
           id="experience"
           value={experience}
-          onChange={(e) =>
-            setExperience(e.target.value)
-          }
+          onChange={(e) => setExperience(e.target.value)}
           maxLength={1200}
           placeholder="Example: good staff, good service"
+          disabled={loading}
         />
 
         <div className="counter">
@@ -178,7 +233,7 @@ export default function ReviewAssistant() {
           disabled={loading}
         >
           {loading
-            ? "✨ Gemini is creating your reviews..."
+            ? "✨ Creating your reviews..."
             : "✨ Generate review options"}
         </button>
 
@@ -190,16 +245,13 @@ export default function ReviewAssistant() {
 
         {reviews.length > 0 && (
           <div className="results">
-
             <div className="resultsHeader">
               <div>
                 <p className="eyebrow">
                   Generated for you
                 </p>
 
-                <h2>
-                  Review options
-                </h2>
+                <h2>Review options</h2>
               </div>
 
               <span className="smallNote">
@@ -207,35 +259,25 @@ export default function ReviewAssistant() {
               </span>
             </div>
 
-            {reviews.map(
-              (review, index) => (
-                <button
-                  key={`${review}-${index}`}
-                  type="button"
-                  className="reviewOption"
-                  onClick={() =>
-                    copyReview(
-                      review,
-                      index
-                    )
-                  }
-                >
-                  <span>
-                    {review}
-                  </span>
+            {reviews.map((review, index) => (
+              <button
+                key={`${review}-${index}`}
+                type="button"
+                className="reviewOption"
+                onClick={() => copyReview(review, index)}
+              >
+                <span>{review}</span>
 
-                  <span className="copy">
-                    {copied === index
-                      ? "✓ Copied"
-                      : "Copy review"}
-                  </span>
-                </button>
-              )
-            )}
+                <span className="copy">
+                  {copied === index
+                    ? "✓ Copied"
+                    : "Copy review"}
+                </span>
+              </button>
+            ))}
 
             {suggestions.length > 0 && (
               <div className="suggestionBox">
-
                 <p className="eyebrow">
                   Want a more personal review?
                 </p>
@@ -245,44 +287,31 @@ export default function ReviewAssistant() {
                 </h3>
 
                 <p className="suggestionText">
-                  These are optional suggestions
-                  generated by Gemini. You don't
-                  need to answer them.
+                  These are optional suggestions generated
+                  by Gemini. You don't need to answer them.
                 </p>
 
                 <div className="suggestions">
-                  {suggestions.map(
-                    (suggestion, index) => (
-                      <div
-                        className="suggestion"
-                        key={`${suggestion}-${index}`}
-                      >
-                        <span>
-                          {index + 1}
-                        </span>
-
-                        <p>
-                          {suggestion}
-                        </p>
-                      </div>
-                    )
-                  )}
+                  {suggestions.map((suggestion, index) => (
+                    <div
+                      className="suggestion"
+                      key={`${suggestion}-${index}`}
+                    >
+                      <span>{index + 1}</span>
+                      <p>{suggestion}</p>
+                    </div>
+                  ))}
                 </div>
               </div>
             )}
 
             <div className="googleBox">
-
-              <strong>
-                Ready to post?
-              </strong>
+              <strong>Ready to post?</strong>
 
               <p>
-                Apni favourite review choose
-                karke copy karo. Phir Google par
-                jaakar apni honest rating select
-                karke manually paste aur submit
-                karo.
+                Apni favourite review choose karke copy karo.
+                Phir Google par jaakar apni honest rating select
+                karke manually paste aur submit karo.
               </p>
 
               <a
@@ -293,16 +322,13 @@ export default function ReviewAssistant() {
               >
                 Continue to Google →
               </a>
-
             </div>
-
           </div>
         )}
       </section>
 
       <p className="footer">
-        Your review should reflect your own
-        experience.
+        Your review should reflect your own experience.
       </p>
     </main>
   );
